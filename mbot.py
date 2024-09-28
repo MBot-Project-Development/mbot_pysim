@@ -7,8 +7,7 @@ import numpy
 import threading
 from copy import copy, deepcopy
 
-sys.path.append('../lcmtypes')
-from mbot_motor_command_t import mbot_motor_command_t
+from mbot_lcm_msgs.twist2D_t import twist2D_t
 
 
 class Mbot(pygame.sprite.Sprite):
@@ -24,9 +23,9 @@ class Mbot(pygame.sprite.Sprite):
         # Model
         self._map = world_map
         self._pose = geometry.Pose(0, 0, 0)
-        stop = mbot_motor_command_t()
-        stop.utime = int(0)
-        self._current_motor_commands = [stop]
+        self.stop = twist2D_t()
+        self.stop.utime = int(0)
+        self._current_mbot_commands = [self.stop]
         self._radius = 0.1
         # Initialize trajectory to all 0 poses from now - trajectory_length to now for every trajectory step in time
         self._trajectory_length = 10.0  # Seconds
@@ -82,32 +81,32 @@ class Mbot(pygame.sprite.Sprite):
             # Remove old data
             old_time = time.perf_counter() - self._trajectory_length
             self._trajectory = list(filter(lambda pose: pose.stamp > old_time, self._trajectory))
-            last_motor_cmd = self._current_motor_commands[-1]
-            self._current_motor_commands = list(
-                filter(lambda cmd: cmd.utime > old_time * 1e6, self._current_motor_commands))
+            last_mbot_cmd = self._current_mbot_commands[-1]
+            self._current_mbot_commands = list(
+                filter(lambda cmd: cmd.utime > old_time * 1e6, self._current_mbot_commands))
             # Add the last motor command with current time back if it was deleted
-            if len(self._current_motor_commands) == 0:
-                last_motor_cmd.utime = int(time.perf_counter() * 1e6)
-                self._current_motor_commands.append(last_motor_cmd)
+            if len(self._current_mbot_commands) == 0:
+                last_mbot_cmd.utime = int(time.perf_counter() * 1e6)
+                self._current_mbot_commands.append(last_mbot_cmd)
         # Render
         self._render(space_converter)
 
-    def add_motor_cmd(self, cmd):
+    def add_mbot_cmd(self, cmd):
         with self._trajectory_lock:
             # Remove any poses calculated after this motor command in time
             self._trajectory = list(filter(lambda pose: pose.stamp <= cmd.utime, self._trajectory))
-            self._current_motor_commands.append(cmd)
+            self._current_mbot_commands.append(cmd)
             self._moving = False
-            if cmd.trans_v != 0 or cmd.angular_v != 0:
+            if cmd.vx != 0 or cmd.vy != 0 or cmd.wz != 0:
                 self._moving = True
 
     @property
     def moving(self):
         return self._moving
 
-    def get_last_motor_cmd(self, cmd):
+    def get_last_mbot_cmd(self, cmd):
         with self._trajectory_lock:
-            return copy(self._current_motor_commands[-1])
+            return copy(self._current_mbot_commands[-1])
 
     def get_current_pose(self):
         return self.get_pose(time.perf_counter())
@@ -157,9 +156,9 @@ class Mbot(pygame.sprite.Sprite):
             # Determine if there are any motor commands in this step
             ustart = start_time * 1e6
             uend = end_time * 1e6
-            motor_cmds = list(filter(lambda cmd: cmd.utime > ustart and cmd.utime < uend, self._current_motor_commands))
+            mbot_cmds = list(filter(lambda cmd: cmd.utime > ustart and cmd.utime < uend, self._current_mbot_commands))
             # Handle each section of this time interval with the correct motor command
-            for cmd in motor_cmds:
+            for cmd in mbot_cmds:
                 # Calculate time diff
                 cmd_time = cmd.utime / 1e6
                 dt = (cmd_time - start_time) * self._real_time_factor
@@ -168,18 +167,18 @@ class Mbot(pygame.sprite.Sprite):
                 start_time = cmd_time
                 final_pose = self._handle_collision(last_state.pose + dpose, last_state.twist)
                 # Clamp speed
-                if cmd.trans_v > self._max_trans_speed:
-                    cmd.trans_v = self._max_trans_speed
-                elif cmd.trans_v < -self._max_trans_speed:
-                    cmd.trans_v = -self._max_trans_speed
-                if cmd.angular_v > self._max_angular_speed:
-                    cmd.angular_v = self._max_angular_speed
-                elif cmd.angular_v < -self._max_angular_speed:
-                    cmd.angular_v = -self._max_angular_speed
+                if cmd.vx > self._max_trans_speed:
+                    cmd.vx = self._max_trans_speed
+                elif cmd.vx < -self._max_trans_speed:
+                    cmd.vx = -self._max_trans_speed
+                if cmd.wz > self._max_angular_speed:
+                    cmd.wz = self._max_angular_speed
+                elif cmd.wz < -self._max_angular_speed:
+                    cmd.wz = -self._max_angular_speed
                 last_state = Mbot.State(final_pose,
-                                        geometry.Twist(cmd.trans_v * numpy.cos(last_state.pose.theta),
-                                                       cmd.trans_v * numpy.sin(last_state.pose.theta),
-                                                       cmd.angular_v),
+                                        geometry.Twist(cmd.vx * numpy.cos(last_state.pose.theta),
+                                                       cmd.vx * numpy.sin(last_state.pose.theta),
+                                                       cmd.wz),
                                         cmd_time)
                 self._trajectory.append(last_state)
             # Calculate to the end of this step
@@ -190,22 +189,22 @@ class Mbot(pygame.sprite.Sprite):
             self._trajectory.append(last_state)
         return last_state.pose
 
-    def _const_vel_motion(self, state, dt, angular_velocity_tolerance=1e-5):
+    def _const_vel_motion(self, state, dt, wzelocity_tolerance=1e-5):
         """!
         @brief      Model constant velocity motion
 
         Equations of motion:
-        dx     = int_ti^tf trans_v * cos(vtheta * (t - ti) + theta_i) dt
-               = vtheta != 0 --> (trans_v / vtheta) * (sin(vtheta * (t - ti) + theta_i)) - sin(theta_i)
-               = vtheta == 0 --> trans_v * cos(theta_i) * (tf - ti)
+        dx     = int_ti^tf vx * cos(vtheta * (t - ti) + theta_i) dt
+               = vtheta != 0 --> (vx / vtheta) * (sin(vtheta * (t - ti) + theta_i)) - sin(theta_i)
+               = vtheta == 0 --> vx * cos(theta_i) * (tf - ti)
         dy     = int_ti^tf tans_v * sin(vtheta * (t - ti) + theta_i) dt
-               = vtheta != 0 --> (-trans_v / vtheta) * (cos(vtheta * (t - ti) + theta_i)) - cos(theta_i)
-               = vtheta == 0 --> trans_v * sin(theta_i) * (tf - ti)
+               = vtheta != 0 --> (-vx / vtheta) * (cos(vtheta * (t - ti) + theta_i)) - cos(theta_i)
+               = vtheta == 0 --> vx * sin(theta_i) * (tf - ti)
         dtheta = vtheta * (t - ti)
 
         @param      state                           The state at the start of the motion
         @param      dt                              Delta time
-        @param      angular_velocity_tolerance      Any angular velocity magnitude less than this is considered zero for
+        @param      wzelocity_tolerance      Any angular velocity magnitude less than this is considered zero for
                                                     numerical stability
 
         """
@@ -214,7 +213,7 @@ class Mbot(pygame.sprite.Sprite):
         dy = 0
         dtheta = state.twist.vtheta * dt
         # Small values are numerically unstable so treat as 0
-        if numpy.abs(state.twist.vtheta) <= angular_velocity_tolerance:
+        if numpy.abs(state.twist.vtheta) <= wzelocity_tolerance:
             dx = state.twist.vx * dt
             dy = state.twist.vy * dt
             dtheta = 0

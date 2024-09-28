@@ -8,8 +8,7 @@ import numpy
 from copy import deepcopy
 # Lcm
 import lcm
-sys.path.append('../lcmtypes')
-from lidar_t import lidar_t
+from mbot_lcm_msgs.lidar_t import lidar_t
 
 
 class Lidar(pygame.sprite.Sprite):

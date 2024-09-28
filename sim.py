@@ -11,10 +11,8 @@ import sys
 import numpy
 import argparse
 import lcm
-sys.path.append('../lcmtypes')
-from odometry_t import odometry_t
-from mbot_motor_command_t import mbot_motor_command_t
-
+from mbot_lcm_msgs.pose2D_t import pose2D_t
+from mbot_lcm_msgs.twist2D_t import twist2D_t
 
 class Gui:
     def __init__(self, map_file, render_lidar, use_noise, lidar_dist_measure_sigma, lidar_theta_step_sigma,
@@ -41,10 +39,10 @@ class Gui:
         # LCM update rate
         self._lcm_handle_rate = 100
         # LCM channel names
-        self._odometry_channel = 'ODOMETRY'
-        self._motor_command_channel = 'MBOT_MOTOR_COMMAND'
+        self._odometry_channel = 'MBOT_ODOMETRY'
+        self._mbot_command_channel = 'MBOT_VEL_CMD'
         # Subscribe to lcm topics
-        self._lcm.subscribe(self._motor_command_channel, self._motor_command_handler)
+        self._lcm.subscribe(self._mbot_command_channel, self._mbot_command_handler)
         # LCM callback thread
         self._lcm_thread = threading.Thread(target=self._handle_lcm)
         self._real_time_factor = real_time_factor
@@ -105,7 +103,7 @@ class Gui:
             dpose.x = trans * numpy.cos(self._odom_pose.theta + dpose.theta)
             dpose.y = trans * numpy.sin(self._odom_pose.theta + dpose.theta)
         self._odom_pose += dpose
-        msg = odometry_t()
+        msg = pose2D_t()
         msg.x = self._odom_pose.x
         msg.y = self._odom_pose.y
         msg.theta = self._odom_pose.theta
@@ -133,16 +131,16 @@ class Gui:
         try:
             while True:
                 with Rate(self._lcm_handle_rate):
-                    self._lcm.handle_timeout(1000.0 / self._lcm_handle_rate)
+                    self._lcm.handle_timeout(int(1000 / self._lcm_handle_rate))
         except KeyboardInterrupt:
             print("lcm exit!")
             sys.exit()
 
-    def _motor_command_handler(self, channel, data):
-        msg = mbot_motor_command_t.decode(data)
+    def _mbot_command_handler(self, channel, data):
+        msg = twist2D_t.decode(data)
         # Override utime with sim time
         msg.utime = int(time.perf_counter() * 1e6)
-        self._mbot.add_motor_cmd(msg)
+        self._mbot.add_mbot_cmd(msg)
 
     """ View """
 
