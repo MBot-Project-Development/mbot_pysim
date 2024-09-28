@@ -142,7 +142,7 @@ class Lidar(pygame.sprite.Sprite):
         num_ranges = len(self._ranges)
         msg.num_ranges = num_ranges
         msg.ranges = self._ranges
-        msg.thetas = self._thetas
+        msg.thetas = [2 * math.pi - theta for theta in self._thetas]
         msg.times = self._times
         msg.intensities = [0] * num_ranges
         self._lcm.publish(self._lidar_channel, msg.encode())

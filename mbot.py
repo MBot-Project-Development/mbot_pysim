@@ -6,7 +6,7 @@ import time
 import numpy
 import threading
 from copy import copy, deepcopy
-
+import lcm
 from mbot_lcm_msgs.twist2D_t import twist2D_t
 
 
@@ -189,7 +189,7 @@ class Mbot(pygame.sprite.Sprite):
             self._trajectory.append(last_state)
         return last_state.pose
 
-    def _const_vel_motion(self, state, dt, wzelocity_tolerance=1e-5):
+    def _const_vel_motion(self, state, dt, wz_tolerance=1e-5):
         """!
         @brief      Model constant velocity motion
 
@@ -197,14 +197,14 @@ class Mbot(pygame.sprite.Sprite):
         dx     = int_ti^tf vx * cos(vtheta * (t - ti) + theta_i) dt
                = vtheta != 0 --> (vx / vtheta) * (sin(vtheta * (t - ti) + theta_i)) - sin(theta_i)
                = vtheta == 0 --> vx * cos(theta_i) * (tf - ti)
-        dy     = int_ti^tf tans_v * sin(vtheta * (t - ti) + theta_i) dt
+        dy     = int_ti^tf vy * sin(vtheta * (t - ti) + theta_i) dt
                = vtheta != 0 --> (-vx / vtheta) * (cos(vtheta * (t - ti) + theta_i)) - cos(theta_i)
                = vtheta == 0 --> vx * sin(theta_i) * (tf - ti)
         dtheta = vtheta * (t - ti)
 
         @param      state                           The state at the start of the motion
         @param      dt                              Delta time
-        @param      wzelocity_tolerance      Any angular velocity magnitude less than this is considered zero for
+        @param      angular_velocity_tolerance      Any angular velocity magnitude less than this is considered zero for
                                                     numerical stability
 
         """
@@ -213,7 +213,7 @@ class Mbot(pygame.sprite.Sprite):
         dy = 0
         dtheta = state.twist.vtheta * dt
         # Small values are numerically unstable so treat as 0
-        if numpy.abs(state.twist.vtheta) <= wzelocity_tolerance:
+        if numpy.abs(state.twist.vtheta) <= wz_tolerance:
             dx = state.twist.vx * dt
             dy = state.twist.vy * dt
             dtheta = 0
@@ -223,7 +223,7 @@ class Mbot(pygame.sprite.Sprite):
             dy = -trans_over_ang * (numpy.cos(state.twist.vtheta * dt + state.pose.theta) - numpy.cos(state.pose.theta))
 
         return geometry.Pose(dx, dy, dtheta)
-
+    
     def _handle_collision(self, pose, twist):
         while any(map(lambda pose: self._map.at_xy(pose.x, pose.y), self._edge_pose_generator(pose, 30))):
             pose.x -= twist.vx * self._trajectory_step / 3.0
