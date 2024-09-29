@@ -218,12 +218,13 @@ class Mbot(pygame.sprite.Sprite):
             dy = state.twist.vy * dt
             dtheta = 0
         else:
-            trans_over_ang = numpy.sqrt(state.twist.vx ** 2 + state.twist.vy ** 2) / state.twist.vtheta
+            # Note: This is correct for diff-drive, but not holonomic (omni) drive
+            trans_over_ang = state.twist.vx / state.twist.vtheta
             dx = trans_over_ang * (numpy.sin(state.twist.vtheta * dt + state.pose.theta) - numpy.sin(state.pose.theta))
             dy = -trans_over_ang * (numpy.cos(state.twist.vtheta * dt + state.pose.theta) - numpy.cos(state.pose.theta))
 
         return geometry.Pose(dx, dy, dtheta)
-    
+
     def _handle_collision(self, pose, twist):
         while any(map(lambda pose: self._map.at_xy(pose.x, pose.y), self._edge_pose_generator(pose, 30))):
             pose.x -= twist.vx * self._trajectory_step / 3.0
