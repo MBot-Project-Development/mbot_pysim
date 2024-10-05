@@ -129,7 +129,7 @@ class Gui:
 
     def _handle_lcm(self):
         try:
-            while True:
+            while self._running:
                 with Rate(self._lcm_handle_rate):
                     self._lcm.handle_timeout(int(1000 / self._lcm_handle_rate))
         except KeyboardInterrupt:
@@ -151,9 +151,10 @@ class Gui:
         pygame.display.flip()
 
     def on_cleanup(self):
-        self._lidar.stop()
-        pygame.quit()
-
+        self._running = False  # Set self._running to False, which will stop the LCM thread
+        self._lcm_thread.join()  # Wait for the LCM thread to finish before quitting
+        self._lidar.stop()  # Stop any lidar-related activities
+        pygame.quit()  # Quit pygame
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -201,7 +202,11 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    print('Running simulator with:\n\t{}'.format(args))
+    
+    # replace commas in args with new lines for nicer looking
+    args_str = str(args).replace('Namespace(', 'Namespace(\n\t').replace(', ', '\n\t')
+    print(f"Running simulator with:\n\t{args_str}")
+
     sim = Gui(map_file=args.map_file,
               render_lidar=args.render_lidar,
               use_noise=args.use_noise,
