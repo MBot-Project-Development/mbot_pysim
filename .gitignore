@@ -2,3 +2,9 @@
 build
 .vscode
 *.pyc
+
+# ignore lcm 
+lcm-1.5.0
+
+# ignore virtual env
+pysim_env
