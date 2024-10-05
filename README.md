@@ -17,6 +17,9 @@ A few things about this project:
     $ source pysim_env/bin/activate
     $ python3 -m pip install -U pygame
     $ python3 -m pip install numpy
+    # to use teleop.py
     $ python3 -m pip install pynput
+    # to use map_generator.py
+    $ python3 -m pip install Pillow
     ```
 4. Install mbot_lcm_msgs, go to `mbot_msgs` and read the README.md there.

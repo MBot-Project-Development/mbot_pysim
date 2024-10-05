@@ -35,7 +35,7 @@ class Gui:
         self._last_pose = geometry.Pose(0, 0, 0)
 
         # Controller
-        self._lcm = lcm.LCM("udpm://239.255.76.67:7667?ttl=2")
+        self._lcm = lcm.LCM("udpm://239.255.76.67:7667?ttl=0")
         # LCM update rate
         self._lcm_handle_rate = 100
         # LCM channel names
@@ -202,7 +202,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    
+
     # replace commas in args with new lines for nicer looking
     args_str = str(args).replace('Namespace(', 'Namespace(\n\t').replace(', ', '\n\t')
     print(f"Running simulator with:\n\t{args_str}")

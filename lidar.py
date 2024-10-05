@@ -34,7 +34,7 @@ class Lidar(pygame.sprite.Sprite):
 
         # Control
         self._lidar_channel = 'LIDAR'
-        self._lcm = lcm.LCM('udpm://239.255.76.67:7667?ttl=2')
+        self._lcm = lcm.LCM('udpm://239.255.76.67:7667?ttl=0')
         self._thread = threading.Thread(target=self.scan)
         self._running = False
         self._real_time_factor = real_time_factor

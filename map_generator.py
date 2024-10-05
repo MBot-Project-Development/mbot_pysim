@@ -9,7 +9,7 @@ def image_to_map(image_path, map_size_x, map_size_y, cells_per_meter, output_pat
     # Resize the image to fit the desired map size in cells
     width_in_cells = int(map_size_x * cells_per_meter)
     height_in_cells = int(map_size_y * cells_per_meter)
-    img = img.resize((width_in_cells, height_in_cells), Image.ANTIALIAS)
+    img = img.resize((width_in_cells, height_in_cells), Image.LANCZOS)
     
     # Convert image to numpy array
     img_array = np.array(img)

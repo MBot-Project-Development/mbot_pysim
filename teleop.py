@@ -8,7 +8,7 @@ from pynput import keyboard
 LIN_VEL_CMD = 0.2  # m/s
 ANG_VEL_CMD = 0.75  # rad/s
 
-lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=1")
+lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=0")
 time.sleep(0.5)
 
 fwd_vel = 0.0
